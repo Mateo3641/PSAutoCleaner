@@ -5,7 +5,7 @@
 
     <groupId>dev.sh4dow</groupId>
     <artifactId>psautocleaner</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <name>PSAutoCleaner</name>
@@ -21,6 +21,7 @@
         <paper.version>1.21.1-R0.1-SNAPSHOT</paper.version>
         <placeholderapi.version>2.11.6</placeholderapi.version>
         <worldguard.version>7.0.9</worldguard.version>
+        <protectionstones.version>2.10.2</protectionstones.version>
         <mockbukkit.version>4.38.0</mockbukkit.version>
         <junit.version>5.10.2</junit.version>
         <assertj.version>3.26.0</assertj.version>
@@ -67,6 +68,20 @@
             <artifactId>worldguard-bukkit</artifactId>
             <version>${worldguard.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- ProtectionStones (for direct claim manipulation & cleanup) -->
+        <dependency>
+            <groupId>dev.espi</groupId>
+            <artifactId>protectionstones</artifactId>
+            <version>${protectionstones.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Testing: MockBukkit & JUnit 5 -->

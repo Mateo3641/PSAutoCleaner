@@ -2,6 +2,7 @@ package dev.sh4dow.psautocleaner.core.config;
 
 import dev.sh4dow.psautocleaner.model.CleanupAction;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
@@ -10,27 +11,27 @@ import java.util.List;
  */
 public record CleanConfig(
         boolean enabled,
-        int inactiveDays,
+        Duration inactiveDuration,
         CleanupAction cleanupAction,
-        long intervalHours,
-        long initialDelayMinutes,
+        Duration intervalDuration,
+        Duration initialDelayDuration,
         List<String> targetWorlds,
         boolean logToConsole,
         String timeFormat,
         boolean checkMembers
 ) {
     public CleanConfig {
-        if (inactiveDays < 1) {
-            inactiveDays = 30;
+        if (inactiveDuration == null || inactiveDuration.isNegative() || inactiveDuration.isZero()) {
+            inactiveDuration = Duration.ofDays(30);
         }
         if (cleanupAction == null) {
             cleanupAction = CleanupAction.REMOVE;
         }
-        if (intervalHours < 1) {
-            intervalHours = 24;
+        if (intervalDuration == null || intervalDuration.isNegative() || intervalDuration.isZero()) {
+            intervalDuration = Duration.ofHours(24);
         }
-        if (initialDelayMinutes < 0) {
-            initialDelayMinutes = 10;
+        if (initialDelayDuration == null || initialDelayDuration.isNegative()) {
+            initialDelayDuration = Duration.ofMinutes(10);
         }
         targetWorlds = targetWorlds == null ? Collections.emptyList() : List.copyOf(targetWorlds);
         if (timeFormat == null || timeFormat.isBlank()) {
@@ -38,7 +39,38 @@ public record CleanConfig(
         }
     }
 
+    /**
+     * Backward-compatibility accessor for inactive days.
+     */
+    public int inactiveDays() {
+        return (int) Math.max(1, inactiveDuration.toDays());
+    }
+
+    /**
+     * Backward-compatibility accessor for interval hours.
+     */
+    public long intervalHours() {
+        return Math.max(1, intervalDuration.toHours());
+    }
+
+    /**
+     * Backward-compatibility accessor for initial delay minutes.
+     */
+    public long initialDelayMinutes() {
+        return initialDelayDuration.toMinutes();
+    }
+
     public static CleanConfig defaultValues() {
-        return new CleanConfig(true, 30, CleanupAction.REMOVE, 24, 10, Collections.emptyList(), true, "short", true);
+        return new CleanConfig(
+                true,
+                Duration.ofDays(30),
+                CleanupAction.REMOVE,
+                Duration.ofHours(24),
+                Duration.ofMinutes(10),
+                Collections.emptyList(),
+                true,
+                "short",
+                true
+        );
     }
 }

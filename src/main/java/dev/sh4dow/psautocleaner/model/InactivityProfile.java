@@ -1,5 +1,6 @@
 package dev.sh4dow.psautocleaner.model;
 
+import java.time.Duration;
 import java.util.UUID;
 
 /**
@@ -24,5 +25,13 @@ public record InactivityProfile(
         if (playerName == null || playerName.isBlank()) {
             playerName = playerUuid.toString();
         }
+    }
+
+    public Duration inactiveDuration() {
+        return Duration.ofMillis(inactiveMillis);
+    }
+
+    public Duration remainingDuration() {
+        return Duration.ofMillis(millisRemaining);
     }
 }

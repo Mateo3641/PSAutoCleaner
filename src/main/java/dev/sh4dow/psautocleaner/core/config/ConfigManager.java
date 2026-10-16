@@ -36,31 +36,67 @@ public class ConfigManager {
         FileConfiguration config = plugin.getConfig();
 
         boolean enabled = config.getBoolean("enabled", true);
-        int inactiveDays = config.getInt("inactive-days", 30);
         String actionStr = config.getString("cleanup-action", "remove");
         CleanupAction action = CleanupAction.fromString(actionStr).orElse(CleanupAction.REMOVE);
-        long intervalHours = config.getLong("interval-hours", 24L);
-        long initialDelayMinutes = config.getLong("initial-delay-minutes", 10L);
         List<String> targetWorlds = config.getStringList("target-worlds");
         boolean logToConsole = config.getBoolean("log-to-console", true);
         String timeFormat = config.getString("time-format", "short");
         boolean checkMembers = config.getBoolean("check-members", true);
 
-        if (inactiveDays < 1) {
-            plugin.getLogger().warning("Invalid inactive-days (" + inactiveDays + ") in config.yml. Defaulting to 30.");
-            inactiveDays = 30;
+        // Parse inactive time
+        java.time.Duration inactiveDuration;
+        String inactiveTimeStr = config.getString("inactive-time");
+        if (inactiveTimeStr != null && !inactiveTimeStr.isBlank()) {
+            try {
+                inactiveDuration = dev.sh4dow.psautocleaner.util.DurationParser.parse(inactiveTimeStr);
+            } catch (Exception e) {
+                plugin.getLogger().warning("Invalid inactive-time '" + inactiveTimeStr + "' in config.yml. Defaulting to 30d.");
+                inactiveDuration = java.time.Duration.ofDays(30);
+            }
+        } else if (config.contains("inactive-days")) {
+            inactiveDuration = java.time.Duration.ofDays(config.getInt("inactive-days", 30));
+        } else {
+            inactiveDuration = java.time.Duration.ofDays(30);
         }
-        if (intervalHours < 1) {
-            plugin.getLogger().warning("Invalid interval-hours (" + intervalHours + ") in config.yml. Defaulting to 24.");
-            intervalHours = 24;
+
+        // Parse scheduler interval
+        java.time.Duration intervalDuration;
+        String intervalStr = config.getString("scheduler.interval", config.getString("interval"));
+        if (intervalStr != null && !intervalStr.isBlank()) {
+            try {
+                intervalDuration = dev.sh4dow.psautocleaner.util.DurationParser.parse(intervalStr);
+            } catch (Exception e) {
+                plugin.getLogger().warning("Invalid scheduler.interval '" + intervalStr + "' in config.yml. Defaulting to 24h.");
+                intervalDuration = java.time.Duration.ofHours(24);
+            }
+        } else if (config.contains("interval-hours")) {
+            intervalDuration = java.time.Duration.ofHours(config.getLong("interval-hours", 24L));
+        } else {
+            intervalDuration = java.time.Duration.ofHours(24);
+        }
+
+        // Parse scheduler initial delay
+        java.time.Duration initialDelayDuration;
+        String delayStr = config.getString("scheduler.initial-delay", config.getString("initial-delay"));
+        if (delayStr != null && !delayStr.isBlank()) {
+            try {
+                initialDelayDuration = dev.sh4dow.psautocleaner.util.DurationParser.parse(delayStr);
+            } catch (Exception e) {
+                plugin.getLogger().warning("Invalid scheduler.initial-delay '" + delayStr + "' in config.yml. Defaulting to 10m.");
+                initialDelayDuration = java.time.Duration.ofMinutes(10);
+            }
+        } else if (config.contains("initial-delay-minutes")) {
+            initialDelayDuration = java.time.Duration.ofMinutes(config.getLong("initial-delay-minutes", 10L));
+        } else {
+            initialDelayDuration = java.time.Duration.ofMinutes(10);
         }
 
         this.cleanConfig = new CleanConfig(
                 enabled,
-                inactiveDays,
+                inactiveDuration,
                 action,
-                intervalHours,
-                initialDelayMinutes,
+                intervalDuration,
+                initialDelayDuration,
                 targetWorlds,
                 logToConsole,
                 timeFormat,

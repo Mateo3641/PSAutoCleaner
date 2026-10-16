@@ -71,6 +71,12 @@ public class PlaceholderApiHook extends PlaceholderExpansion {
         if (param.equals("threshold_days")) {
             return String.valueOf(configManager.getCleanConfig().inactiveDays());
         }
+        if (param.equals("threshold_time")) {
+            return dev.sh4dow.psautocleaner.util.DurationParser.formatShort(configManager.getCleanConfig().inactiveDuration());
+        }
+        if (param.equals("interval")) {
+            return dev.sh4dow.psautocleaner.util.DurationParser.formatShort(configManager.getCleanConfig().intervalDuration());
+        }
         if (param.equals("cleanup_action")) {
             return configManager.getCleanConfig().cleanupAction().getCommandArg();
         }

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -27,10 +28,10 @@ class InactivityServiceTest {
         configManager = Mockito.mock(ConfigManager.class);
         CleanConfig config = new CleanConfig(
                 true,
-                30,
+                Duration.ofDays(30),
                 CleanupAction.REMOVE,
-                24,
-                10,
+                Duration.ofHours(24),
+                Duration.ofMinutes(10),
                 Collections.emptyList(),
                 true,
                 "short",
@@ -112,6 +113,40 @@ class InactivityServiceTest {
     }
 
     @Test
+    void testMinuteLevelInactivityThresholdExpiresInThreeMinutes() {
+        CleanConfig minuteConfig = new CleanConfig(
+                true,
+                Duration.ofMinutes(3), // 3 minutes threshold!
+                CleanupAction.REMOVE,
+                Duration.ofMinutes(1),
+                Duration.ofSeconds(10),
+                Collections.emptyList(),
+                true,
+                "short",
+                true
+        );
+        when(configManager.getCleanConfig()).thenReturn(minuteConfig);
+
+        OfflinePlayer offlinePlayer = Mockito.mock(OfflinePlayer.class);
+        UUID uuid = UUID.randomUUID();
+
+        long now = System.currentTimeMillis();
+        long fourMinutesAgo = now - TimeUnit.MINUTES.toMillis(4);
+
+        when(offlinePlayer.getUniqueId()).thenReturn(uuid);
+        when(offlinePlayer.getName()).thenReturn("MinutePlayer");
+        when(offlinePlayer.isOnline()).thenReturn(false);
+        when(offlinePlayer.getPlayer()).thenReturn(null);
+        when(offlinePlayer.getLastLogin()).thenReturn(fourMinutesAgo);
+        when(offlinePlayer.getLastPlayed()).thenReturn(fourMinutesAgo);
+
+        InactivityProfile profile = inactivityService.calculate(offlinePlayer);
+
+        assertThat(profile.isExpired()).isTrue();
+        assertThat(profile.millisRemaining()).isEqualTo(0);
+    }
+
+    @Test
     void testPlayerWithBypassPermissionIsExempt() {
         OfflinePlayer offlinePlayer = Mockito.mock(OfflinePlayer.class);
         Player onlinePlayer = Mockito.mock(Player.class);
@@ -139,7 +174,17 @@ class InactivityServiceTest {
         assertThat(inactivityService.formatDuration(duration)).isEqualTo("5d 3h");
 
         // Verbose format
-        CleanConfig verboseConfig = new CleanConfig(true, 30, CleanupAction.REMOVE, 24, 10, Collections.emptyList(), true, "verbose", true);
+        CleanConfig verboseConfig = new CleanConfig(
+                true,
+                Duration.ofDays(30),
+                CleanupAction.REMOVE,
+                Duration.ofHours(24),
+                Duration.ofMinutes(10),
+                Collections.emptyList(),
+                true,
+                "verbose",
+                true
+        );
         when(configManager.getCleanConfig()).thenReturn(verboseConfig);
         assertThat(inactivityService.formatDuration(duration)).isEqualTo("5d 3h 15m");
 

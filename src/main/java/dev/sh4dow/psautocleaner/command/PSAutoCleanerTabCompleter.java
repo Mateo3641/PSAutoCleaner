@@ -45,6 +45,8 @@ public class PSAutoCleanerTabCompleter implements TabCompleter {
             return filter(players, args[1]);
         }
 
+        List<String> durationSuggestions = List.of("3m", "15m", "1h", "12h", "1d", "7d", "14d", "30d", "60d");
+
         if (sub.equals("run") && sender.hasPermission(PERM_ADMIN)) {
             if (args.length == 2) {
                 List<String> actions = Arrays.stream(CleanupAction.values())
@@ -53,7 +55,7 @@ public class PSAutoCleanerTabCompleter implements TabCompleter {
                 return filter(actions, args[1]);
             }
             if (args.length == 3) {
-                return filter(List.of("14", "30", "60", "90"), args[2]);
+                return filter(durationSuggestions, args[2]);
             }
             if (args.length == 4) {
                 List<String> worlds = Bukkit.getWorlds().stream().map(World::getName).toList();
@@ -63,7 +65,7 @@ public class PSAutoCleanerTabCompleter implements TabCompleter {
 
         if (sub.equals("preview") && sender.hasPermission(PERM_ADMIN)) {
             if (args.length == 2) {
-                return filter(List.of("14", "30", "60", "90"), args[1]);
+                return filter(durationSuggestions, args[1]);
             }
             if (args.length == 3) {
                 List<String> worlds = Bukkit.getWorlds().stream().map(World::getName).toList();

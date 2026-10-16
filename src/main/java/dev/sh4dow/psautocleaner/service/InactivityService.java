@@ -6,6 +6,7 @@ import dev.sh4dow.psautocleaner.model.InactivityProfile;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -16,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 public class InactivityService {
 
     public static final String BYPASS_PERMISSION = "psautocleaner.bypass";
-    private static final long MILLIS_PER_DAY = TimeUnit.DAYS.toMillis(1);
 
     private final ConfigManager configManager;
 
@@ -35,7 +35,8 @@ public class InactivityService {
         UUID uuid = offlinePlayer.getUniqueId();
         String name = offlinePlayer.getName() != null ? offlinePlayer.getName() : uuid.toString();
         CleanConfig config = configManager.getCleanConfig();
-        int thresholdDays = config.inactiveDays();
+        Duration threshold = config.inactiveDuration();
+        long thresholdMillis = threshold.toMillis();
 
         boolean isOnline = offlinePlayer.isOnline();
         Player onlinePlayer = offlinePlayer.getPlayer();
@@ -58,11 +59,11 @@ public class InactivityService {
         long inactiveMillis = Math.max(0, now - lastPlayed);
         long daysInactive = TimeUnit.MILLISECONDS.toDays(inactiveMillis);
 
-        long thresholdMillis = (long) thresholdDays * MILLIS_PER_DAY;
+        long thresholdDays = Math.max(1, threshold.toDays());
         long millisRemaining = isExempt ? Long.MAX_VALUE : Math.max(0, thresholdMillis - inactiveMillis);
         long daysRemaining = isExempt ? Long.MAX_VALUE : Math.max(0, thresholdDays - daysInactive);
 
-        boolean isExpired = !isExempt && (daysInactive >= thresholdDays);
+        boolean isExpired = !isExempt && (inactiveMillis >= thresholdMillis);
 
         return new InactivityProfile(
                 uuid,
@@ -83,7 +84,7 @@ public class InactivityService {
      */
     public String formatDuration(long millis) {
         if (millis <= 0) {
-            return "0m";
+            return "0s";
         }
         if (millis == Long.MAX_VALUE) {
             return "Never";
@@ -92,6 +93,7 @@ public class InactivityService {
         long days = TimeUnit.MILLISECONDS.toDays(millis);
         long hours = TimeUnit.MILLISECONDS.toHours(millis) % 24;
         long minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60;
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
 
         String format = configManager.getCleanConfig().timeFormat();
         if ("verbose".equalsIgnoreCase(format)) {
@@ -101,7 +103,10 @@ public class InactivityService {
             if (hours > 0) {
                 return String.format("%dh %dm", hours, minutes);
             }
-            return String.format("%dm", minutes);
+            if (minutes > 0) {
+                return String.format("%dm %ds", minutes, seconds);
+            }
+            return String.format("%ds", seconds);
         }
 
         // Default short format
@@ -111,7 +116,10 @@ public class InactivityService {
         if (hours > 0) {
             return String.format("%dh %dm", hours, minutes);
         }
-        return String.format("%dm", minutes);
+        if (minutes > 0) {
+            return String.format("%dm", minutes);
+        }
+        return String.format("%ds", seconds);
     }
 
     /**
@@ -127,7 +135,7 @@ public class InactivityService {
         if (profile.isOnline()) {
             return "ACTIVE";
         }
-        if (profile.daysRemaining() <= 3) {
+        if (profile.millisRemaining() <= TimeUnit.DAYS.toMillis(3)) {
             return "EXPIRING_SOON";
         }
         return "INACTIVE";

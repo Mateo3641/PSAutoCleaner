@@ -202,22 +202,34 @@ public class PSAutoCleanerCommand implements CommandExecutor {
         CleanConfig config = configManager.getCleanConfig();
         String nextRun = cleanerService.getNextScheduledRun()
                 .map(instant -> {
-                    long millis = Duration.between(Instant.now(), instant).toMillis();
+                    long millis = java.time.Duration.between(Instant.now(), instant).toMillis();
                     return millis > 0 ? inactivityService.formatDuration(millis) : "Imminent";
                 })
                 .orElse("Disabled");
 
         String lastRun = cleanerService.getLastResult()
-                .map(r -> String.format("%d worlds processed in %dms (%s)", r.worldsProcessed(), r.durationMillis(), r.action().name()))
+                .map(r -> String.format("%d worlds processed in %dms (%d claims %s)",
+                        r.worldsProcessed(),
+                        r.durationMillis(),
+                        r.regionsCleaned(),
+                        r.action().name().toLowerCase()
+                ))
                 .orElse("None since boot");
 
         String worlds = config.targetWorlds().isEmpty() ? "All loaded worlds" : String.join(", ", config.targetWorlds());
 
         messageService.sendWithoutPrefix(sender, "status.header", Collections.emptyMap());
         messageService.sendWithoutPrefix(sender, "status.enabled", Map.of("value", config.enabled() ? "<green>Yes</green>" : "<red>No</red>"));
-        messageService.sendWithoutPrefix(sender, "status.threshold", Map.of("days", String.valueOf(config.inactiveDays())));
+        messageService.sendWithoutPrefix(sender, "status.threshold", Map.of(
+                "days", String.valueOf(config.inactiveDays()),
+                "time", dev.sh4dow.psautocleaner.util.DurationParser.formatShort(config.inactiveDuration())
+        ));
         messageService.sendWithoutPrefix(sender, "status.action", Map.of("action", config.cleanupAction().getCommandArg()));
-        messageService.sendWithoutPrefix(sender, "status.interval", Map.of("hours", String.valueOf(config.intervalHours())));
+        messageService.sendWithoutPrefix(sender, "status.interval", Map.of(
+                "hours", String.valueOf(config.intervalHours()),
+                "interval", dev.sh4dow.psautocleaner.util.DurationParser.formatShort(config.intervalDuration()),
+                "time", dev.sh4dow.psautocleaner.util.DurationParser.formatShort(config.intervalDuration())
+        ));
         messageService.sendWithoutPrefix(sender, "status.next-run", Map.of("time", nextRun));
         messageService.sendWithoutPrefix(sender, "status.target-worlds", Map.of("worlds", worlds));
         messageService.sendWithoutPrefix(sender, "status.last-run", Map.of("time", lastRun));
@@ -231,11 +243,11 @@ public class PSAutoCleanerCommand implements CommandExecutor {
 
         CleanConfig config = configManager.getCleanConfig();
         CleanupAction action = isPreview ? CleanupAction.PREVIEW : config.cleanupAction();
-        int days = config.inactiveDays();
+        java.time.Duration durationThreshold = config.inactiveDuration();
         List<String> explicitWorlds = Collections.emptyList();
 
-        // Parameter parsing: /psac run [action] [days] [world]
-        // or /psac preview [days] [world]
+        // Parameter parsing: /psac run [action] [time] [world]
+        // or /psac preview [time] [world]
         int argOffset = 1;
         if (!isPreview && args.length > argOffset) {
             Optional<CleanupAction> parsedAction = CleanupAction.fromString(args[argOffset]);
@@ -247,9 +259,11 @@ public class PSAutoCleanerCommand implements CommandExecutor {
 
         if (args.length > argOffset) {
             try {
-                days = Integer.parseInt(args[argOffset]);
+                durationThreshold = dev.sh4dow.psautocleaner.util.DurationParser.parse(args[argOffset]);
                 argOffset++;
-            } catch (NumberFormatException ignored) {
+            } catch (IllegalArgumentException e) {
+                sender.sendMessage("§cInvalid duration format: '" + args[argOffset] + "'. Examples: 3m, 5h, 30d");
+                return;
             }
         }
 
@@ -257,7 +271,7 @@ public class PSAutoCleanerCommand implements CommandExecutor {
             explicitWorlds = List.of(args[argOffset]);
         }
 
-        cleanerService.executeSweep(action, days, explicitWorlds, sender);
+        cleanerService.executeSweep(action, durationThreshold, explicitWorlds, sender);
     }
 
     private void handleReload(CommandSender sender) {

@@ -42,7 +42,9 @@ It automatically monitors and cleans up protection regions belonging to inactive
 | `%psautocleaner_days_inactive%` | Days elapsed since player was last seen |
 | `%psautocleaner_time_inactive%` | Formatted duration since last login |
 | `%psautocleaner_status%` | Inactivity state (`ACTIVE`, `INACTIVE`, `EXPIRING_SOON`, `EXPIRED`, `EXEMPT`) |
-| `%psautocleaner_threshold_days%` | Inactivity threshold defined in `config.yml` |
+| `%psautocleaner_threshold_days%` | Inactivity threshold in days defined in `config.yml` |
+| `%psautocleaner_threshold_time%` | Inactivity threshold formatted (e.g. `30d`, `3m`) |
+| `%psautocleaner_interval%` | Automated sweep interval formatted (e.g. `24h`, `30m`) |
 | `%psautocleaner_next_cleanup%` | Time remaining until the next automatic server sweep |
 | `%psautocleaner_current_region_id%` | ID of the claim region player is standing inside |
 | `%psautocleaner_current_region_owner%` | Owner of the claim region player is standing inside |
@@ -60,17 +62,21 @@ It automatically monitors and cleans up protection regions belonging to inactive
 # Enable or disable the autonomous periodic cleaner task
 enabled: true
 
-# Inactivity threshold in days
-inactive-days: 30
+# Inactivity threshold before claims qualify for cleanup
+# Supports flexible units: s (seconds), m (minutes), h (hours), d (days), w (weeks), mo (months)
+# Examples: "30d", "14d", "12h", "3m" (testing)
+inactive-time: "30d"
 
-# Cleanup action: remove, regen, disown
+# Cleanup action: remove
 cleanup-action: "remove"
 
-# Frequency of cleanup in hours
-interval-hours: 24
+# Repetitive background task scheduler configuration
+scheduler:
+  # How often the cleanup sweep runs automatically (e.g. "24h", "12h", "1h", "30m", "3m")
+  interval: "24h"
 
-# Initial delay in minutes after server boot
-initial-delay-minutes: 10
+  # Delay before first execution after server boot (e.g. "10m", "5m", "1m", "30s")
+  initial-delay: "10m"
 
 # Target worlds (empty list = all loaded worlds)
 # To specify worlds, remove the [] and list them like this:

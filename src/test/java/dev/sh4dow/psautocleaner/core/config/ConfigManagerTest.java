@@ -3,7 +3,7 @@ package dev.sh4dow.psautocleaner.core.config;
 import dev.sh4dow.psautocleaner.model.CleanupAction;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
+import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,22 +23,25 @@ class ConfigManagerTest {
 
     @Test
     void testCleanConfigSanitization() {
-        // Values below 1 should be sanitized
+        // Null or negative durations should be sanitized to defaults
         CleanConfig config = new CleanConfig(
                 true,
-                -5, // invalid inactiveDays
+                Duration.ofDays(-5), // invalid inactiveDuration
                 null, // invalid action
-                0,  // invalid intervalHours
-                -2, // invalid initialDelay
+                Duration.ofHours(0),  // invalid interval
+                Duration.ofMinutes(-2), // invalid initialDelay
                 null,
                 true,
                 "",
                 true
         );
 
+        assertThat(config.inactiveDuration()).isEqualTo(Duration.ofDays(30));
         assertThat(config.inactiveDays()).isEqualTo(30);
         assertThat(config.cleanupAction()).isEqualTo(CleanupAction.REMOVE);
+        assertThat(config.intervalDuration()).isEqualTo(Duration.ofHours(24));
         assertThat(config.intervalHours()).isEqualTo(24);
+        assertThat(config.initialDelayDuration()).isEqualTo(Duration.ofMinutes(10));
         assertThat(config.initialDelayMinutes()).isEqualTo(10);
         assertThat(config.targetWorlds()).isEmpty();
         assertThat(config.timeFormat()).isEqualTo("short");
@@ -49,10 +52,10 @@ class ConfigManagerTest {
     void testCleanConfigCustomValues() {
         CleanConfig config = new CleanConfig(
                 true,
-                60,
-                CleanupAction.REGEN,
-                12,
-                5,
+                Duration.ofMinutes(3), // fine-grained 3 minutes!
+                CleanupAction.REMOVE,
+                Duration.ofMinutes(1),
+                Duration.ofSeconds(30),
                 List.of("world", "world_nether"),
                 false,
                 "verbose",
@@ -60,10 +63,10 @@ class ConfigManagerTest {
         );
 
         assertThat(config.enabled()).isTrue();
-        assertThat(config.inactiveDays()).isEqualTo(60);
-        assertThat(config.cleanupAction()).isEqualTo(CleanupAction.REGEN);
-        assertThat(config.intervalHours()).isEqualTo(12);
-        assertThat(config.initialDelayMinutes()).isEqualTo(5);
+        assertThat(config.inactiveDuration()).isEqualTo(Duration.ofMinutes(3));
+        assertThat(config.cleanupAction()).isEqualTo(CleanupAction.REMOVE);
+        assertThat(config.intervalDuration()).isEqualTo(Duration.ofMinutes(1));
+        assertThat(config.initialDelayDuration()).isEqualTo(Duration.ofSeconds(30));
         assertThat(config.targetWorlds()).containsExactly("world", "world_nether");
         assertThat(config.logToConsole()).isFalse();
         assertThat(config.timeFormat()).isEqualTo("verbose");

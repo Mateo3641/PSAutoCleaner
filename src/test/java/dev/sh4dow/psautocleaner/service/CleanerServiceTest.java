@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +28,7 @@ class CleanerServiceTest {
     private ConfigManager configManager;
     private MessageService messageService;
     private TaskScheduler scheduler;
+    private InactivityService inactivityService;
     private CleanerService cleanerService;
 
     @BeforeEach
@@ -37,6 +39,7 @@ class CleanerServiceTest {
         configManager = Mockito.mock(ConfigManager.class);
         messageService = Mockito.mock(MessageService.class);
         scheduler = Mockito.mock(TaskScheduler.class);
+        inactivityService = Mockito.mock(InactivityService.class);
 
         // Immediate sync task execution
         doAnswer(invocation -> {
@@ -47,10 +50,10 @@ class CleanerServiceTest {
 
         CleanConfig config = new CleanConfig(
                 true,
-                30,
+                Duration.ofDays(30),
                 CleanupAction.REMOVE,
-                24,
-                10,
+                Duration.ofHours(24),
+                Duration.ofMinutes(10),
                 Collections.emptyList(),
                 false,
                 "short",
@@ -58,7 +61,7 @@ class CleanerServiceTest {
         );
         when(configManager.getCleanConfig()).thenReturn(config);
 
-        cleanerService = new CleanerService(plugin, configManager, messageService, scheduler);
+        cleanerService = new CleanerService(plugin, configManager, messageService, scheduler, inactivityService);
     }
 
     @Test
@@ -70,12 +73,12 @@ class CleanerServiceTest {
             return null;
         }).when(blockingScheduler).runSync(any(Runnable.class));
 
-        CleanerService lockedService = new CleanerService(plugin, configManager, messageService, blockingScheduler);
+        CleanerService lockedService = new CleanerService(plugin, configManager, messageService, blockingScheduler, inactivityService);
 
         // First call starts execution
         CompletableFuture<CleanupExecutionResult> firstCall = lockedService.executeSweep(
                 CleanupAction.REMOVE,
-                30,
+                Duration.ofDays(30),
                 List.of("world"),
                 null
         );
@@ -85,7 +88,7 @@ class CleanerServiceTest {
         // Second call while first is executing must fail immediately
         CompletableFuture<CleanupExecutionResult> secondCall = lockedService.executeSweep(
                 CleanupAction.REMOVE,
-                30,
+                Duration.ofDays(30),
                 List.of("world"),
                 null
         );

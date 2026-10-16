@@ -6,21 +6,27 @@
 # Enable or disable the autonomous periodic cleaner task
 enabled: true
 
-# Inactivity threshold in days
-# Players inactive for this number of days or more will have their claims cleaned up
-inactive-days: 30
+# Inactivity threshold required before claims qualify for cleanup.
+# Supports flexible time units: s (seconds), m (minutes), h (hours), d (days), w (weeks), mo (months)
+# Examples: "30d" (production), "14d", "12h", "3m" (testing)
+# (Legacy 'inactive-days: 30' is also fully supported)
+inactive-time: "30d"
 
 # Cleanup action to perform:
 # - remove  : Permanently delete claim region and break/remove protection stone block
-# - regen   : Delete region and regenerate terrain to natural state (requires WorldEdit/FAWE)
-# - disown  : Remove player ownership while preserving the claim
 cleanup-action: "remove"
 
-# Frequency of the cleanup task in hours (e.g., 24 = once per day)
-interval-hours: 24
+# Repetitive background task scheduler configuration
+scheduler:
+  # How often the cleanup sweep runs automatically.
+  # Supports any time duration: "24h" (once a day), "12h", "1h", "30m", "3m" (for fast testing)
+  # (Legacy 'interval-hours: 24' is also fully supported)
+  interval: "24h"
 
-# Delay before first execution after server start in minutes (avoids lag spikes on boot)
-initial-delay-minutes: 10
+  # Delay before first execution after server start (avoids lag spikes on boot)
+  # Examples: "10m", "5m", "1m", "30s"
+  # (Legacy 'initial-delay-minutes: 10' is also fully supported)
+  initial-delay: "10m"
 
 # Target worlds where cleanup should run
 # Leave empty ([]) to target ALL loaded worlds on the server.

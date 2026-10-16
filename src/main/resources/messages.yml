@@ -13,9 +13,9 @@ reload-success: "<green>Configuration and scheduled tasks reloaded successfully.
 status:
   header: "<gray>------- <gradient:#00c6ff:#0072ff><bold>PSAutoCleaner Status</bold></gradient> <gray>-------"
   enabled: "<gray>Enabled: <value>"
-  threshold: "<gray>Inactivity Threshold: <gold><days> days</gold>"
+  threshold: "<gray>Inactivity Threshold: <gold><time></gold>"
   action: "<gray>Cleanup Action: <yellow><action></yellow>"
-  interval: "<gray>Sweep Interval: <aqua><hours> hours</aqua>"
+  interval: "<gray>Sweep Interval: <aqua><interval></aqua>"
   next-run: "<gray>Next Automated Sweep: <green><time></green>"
   target-worlds: "<gray>Target Worlds: <white><worlds></white>"
   last-run: "<gray>Last Execution: <white><time></white>"
@@ -45,7 +45,7 @@ region:
 
 cleanup:
   started: "<yellow>Starting ProtectionStones cleanup sweep across <white><count></white> worlds...</yellow>"
-  world-executed: "<gray>Dispatched cleanup for world <aqua><world></aqua> (Action: <yellow><action></yellow>, Days: <gold><days></gold>)."
+  world-executed: "<gray>Processed world <aqua><world></aqua> (Action: <yellow><action></yellow>, Time: <gold><time></gold>, Found: <white><found></white>, Cleaned: <green><cleaned></green>)."
   completed: "<green>Cleanup sweep completed in <time>ms.</green>"
   already-running: "<red>A cleanup sweep is already currently executing! Please wait.</red>"
   disabled: "<red>Auto-cleaner is currently disabled in config.yml.</red>"
@@ -55,6 +55,6 @@ help:
   check: "<gold>/psac check [player]</gold> <dark_gray>-</dark_gray> <gray>Check claim expiration timer"
   region: "<gold>/psac region</gold> <dark_gray>-</dark_gray> <gray>Inspect the ProtectionStone claim you are standing in"
   status: "<gold>/psac status</gold> <dark_gray>-</dark_gray> <gray>View scheduler and configuration status"
-  run: "<gold>/psac run [action] [days] [world]</gold> <dark_gray>-</dark_gray> <gray>Force a cleanup sweep now (Admin)"
-  preview: "<gold>/psac preview [days] [world]</gold> <dark_gray>-</dark_gray> <gray>Preview cleanup targets (Admin)"
+  run: "<gold>/psac run [action] [time] [world]</gold> <dark_gray>-</dark_gray> <gray>Force a cleanup sweep now (Admin)"
+  preview: "<gold>/psac preview [time] [world]</gold> <dark_gray>-</dark_gray> <gray>Preview cleanup targets (Admin)"
   reload: "<gold>/psac reload</gold> <dark_gray>-</dark_gray> <gray>Reload configuration and tasks (Admin)"
