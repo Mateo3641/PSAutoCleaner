@@ -1,0 +1,31 @@
+name: PSAutoCleaner
+version: '${project.version}'
+main: dev.sh4dow.psautocleaner.PSAutoCleanerPlugin
+api-version: '1.21'
+author: sh4dow
+description: Autonomous auto-cleaner companion addon for ProtectionStones on Paper 1.21+
+
+softdepend:
+  - ProtectionStones
+  - WorldGuard
+  - PlaceholderAPI
+
+commands:
+  psautocleaner:
+    description: PSAutoCleaner administrative and player commands
+    aliases: [psclean, psac]
+    usage: /<command> [check|region|status|run|preview|reload]
+
+permissions:
+  psautocleaner.admin:
+    description: Grants full administrative access to trigger sweeps, previews and reload the plugin
+    default: op
+  psautocleaner.check:
+    description: Allows checking own claim expiration timer
+    default: true
+  psautocleaner.check.others:
+    description: Allows checking inactivity and expiration of other players
+    default: op
+  psautocleaner.bypass:
+    description: Exempts player's protection stones from automated deletion
+    default: false

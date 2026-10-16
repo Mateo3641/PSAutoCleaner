@@ -1,0 +1,58 @@
+# ==============================================================================
+# PSAutoCleaner Messages (Adventure MiniMessage Format)
+# MiniMessage documentation: https://docs.advntr.dev/minimessage/format.html
+# ==============================================================================
+
+prefix: "<gradient:#00c6ff:#0072ff>[PSAutoCleaner]</gradient> "
+
+no-permission: "<red>You do not have permission to execute this command.</red>"
+player-only: "<red>This command can only be executed by in-game players.</red>"
+player-not-found: "<red>Player <gold><player></gold> was not found in server records.</red>"
+reload-success: "<green>Configuration and scheduled tasks reloaded successfully.</green>"
+
+status:
+  header: "<gray>------- <gradient:#00c6ff:#0072ff><bold>PSAutoCleaner Status</bold></gradient> <gray>-------"
+  enabled: "<gray>Enabled: <value>"
+  threshold: "<gray>Inactivity Threshold: <gold><days> days</gold>"
+  action: "<gray>Cleanup Action: <yellow><action></yellow>"
+  interval: "<gray>Sweep Interval: <aqua><hours> hours</aqua>"
+  next-run: "<gray>Next Automated Sweep: <green><time></green>"
+  target-worlds: "<gray>Target Worlds: <white><worlds></white>"
+  last-run: "<gray>Last Execution: <white><time></white>"
+
+check:
+  header: "<gray>------- <gradient:#00c6ff:#0072ff><bold>Inactivity Check</bold></gradient> <gray>-------"
+  player: "<gray>Player: <gold><player></gold>"
+  status-active: "<gray>Status: <green>Active (Online)</green>"
+  status-inactive: "<gray>Status: <yellow>Inactive for <days_inactive> (<time_inactive>)</yellow>"
+  status-expired: "<gray>Status: <red><bold>EXPIRED</bold> (Inactive for <days_inactive>)</red>"
+  status-exempt: "<gray>Status: <aqua><bold>EXEMPT</bold> (Protected via bypass permission)</aqua>"
+  time-remaining: "<gray>Time until claim deletion: <green><time_remaining></green>"
+  expired-warning: "<red><bold>WARNING:</bold> This player's claims are eligible for immediate deletion on the next sweep!</red>"
+
+region:
+  header: "<gray>------- <gradient:#00c6ff:#0072ff><bold>Region Inactivity Info</bold></gradient> <gray>-------"
+  not-in-region: "<red>You are not currently standing inside any ProtectionStone region.</red>"
+  region-id: "<gray>Region: <yellow><region></yellow> <dark_gray>(World: <world>)</dark_gray>"
+  owner: "<gray>Owner: <gold><owner></gold>"
+  no-owner: "<gray>Owner: <italic>None / Server</italic>"
+  owner-exempt: "<aqua>This region is exempt from auto-cleanup.</aqua>"
+  owner-active: "<green>Owner is currently active. Time remaining: <time_remaining></green>"
+  owner-inactive: "<yellow>Owner inactive for <days_inactive>. Deletion in: <time_remaining></yellow>"
+  owner-expired: "<red><bold>EXPIRED!</bold> This region will be cleaned up on the next sweep.</red>"
+
+cleanup:
+  started: "<yellow>Starting ProtectionStones cleanup sweep across <white><count></white> worlds...</yellow>"
+  world-executed: "<gray>Dispatched cleanup for world <aqua><world></aqua> (Action: <yellow><action></yellow>, Days: <gold><days></gold>)."
+  completed: "<green>Cleanup sweep completed in <time>ms.</green>"
+  already-running: "<red>A cleanup sweep is already currently executing! Please wait.</red>"
+  disabled: "<red>Auto-cleaner is currently disabled in config.yml.</red>"
+
+help:
+  header: "<gray>------- <gradient:#00c6ff:#0072ff><bold>PSAutoCleaner Commands</bold></gradient> <gray>-------"
+  check: "<gold>/psac check [player]</gold> <dark_gray>-</dark_gray> <gray>Check claim expiration timer"
+  region: "<gold>/psac region</gold> <dark_gray>-</dark_gray> <gray>Inspect the ProtectionStone claim you are standing in"
+  status: "<gold>/psac status</gold> <dark_gray>-</dark_gray> <gray>View scheduler and configuration status"
+  run: "<gold>/psac run [action] [days] [world]</gold> <dark_gray>-</dark_gray> <gray>Force a cleanup sweep now (Admin)"
+  preview: "<gold>/psac preview [days] [world]</gold> <dark_gray>-</dark_gray> <gray>Preview cleanup targets (Admin)"
+  reload: "<gold>/psac reload</gold> <dark_gray>-</dark_gray> <gray>Reload configuration and tasks (Admin)"

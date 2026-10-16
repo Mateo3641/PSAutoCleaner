@@ -1,0 +1,34 @@
+# ==============================================================================
+# PSAutoCleaner Configuration
+# Autonomous auto-cleaner companion addon for ProtectionStones (Paper 1.21+)
+# ==============================================================================
+
+# Enable or disable the autonomous periodic cleaner task
+enabled: true
+
+# Inactivity threshold in days
+# Players inactive for this number of days or more will have their claims cleaned up
+inactive-days: 30
+
+# Cleanup action to perform:
+# - remove  : Permanently delete claim region and break/remove protection stone block
+# - regen   : Delete region and regenerate terrain to natural state (requires WorldEdit/FAWE)
+# - disown  : Remove player ownership while preserving the claim
+cleanup-action: "remove"
+
+# Frequency of the cleanup task in hours (e.g., 24 = once per day)
+interval-hours: 24
+
+# Delay before first execution after server start in minutes (avoids lag spikes on boot)
+initial-delay-minutes: 10
+
+# Target worlds where cleanup should run
+# Leave empty ([]) to target ALL loaded worlds on the server
+target-worlds: []
+
+# Send summary messages and cleanup logs to console
+log-to-console: true
+
+# Time format for countdown placeholders and messages
+# Options: "verbose" (e.g. 29d 14h 32m), "short" (e.g. 29d 14h)
+time-format: "short"
