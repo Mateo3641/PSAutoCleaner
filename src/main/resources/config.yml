@@ -23,10 +23,12 @@ interval-hours: 24
 initial-delay-minutes: 10
 
 # Target worlds where cleanup should run
-# Leave empty ([]) to target ALL loaded worlds on the server
+# Leave empty ([]) to target ALL loaded worlds on the server.
+# To specify worlds, remove the [] and list them like this:
+# target-worlds:
+#   - "world"
+#   - "lobby"
 target-worlds: []
-# - "world"
-# - "lobby"
 
 # Send summary messages and cleanup logs to console
 log-to-console: true
