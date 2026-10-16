@@ -18,7 +18,10 @@ public record CleanConfig(
         List<String> targetWorlds,
         boolean logToConsole,
         String timeFormat,
-        boolean checkMembers
+        boolean checkMembers,
+        int batchSizePerTick,
+        boolean broadcastEnabled,
+        List<String> broadcastLines
 ) {
     public CleanConfig {
         if (inactiveDuration == null || inactiveDuration.isNegative() || inactiveDuration.isZero()) {
@@ -36,6 +39,18 @@ public record CleanConfig(
         targetWorlds = targetWorlds == null ? Collections.emptyList() : List.copyOf(targetWorlds);
         if (timeFormat == null || timeFormat.isBlank()) {
             timeFormat = "short";
+        }
+        if (batchSizePerTick < 1) {
+            batchSizePerTick = 2;
+        }
+        if (broadcastLines == null || broadcastLines.isEmpty()) {
+            broadcastLines = List.of(
+                    "<gradient:#ff5555:#ff0000><bold>¡LIMPIEZA DE INACTIVIDAD!</bold></gradient>",
+                    "<gray>Las protecciones de <gold><player></gold> han sido eliminadas por inactividad (<time> desconectado).",
+                    "<yellow>¡El terreno ha quedado libre para nuevos aventureros!</yellow>"
+            );
+        } else {
+            broadcastLines = List.copyOf(broadcastLines);
         }
     }
 
@@ -70,7 +85,10 @@ public record CleanConfig(
                 Collections.emptyList(),
                 true,
                 "short",
-                true
+                true,
+                2,
+                true,
+                Collections.emptyList()
         );
     }
 }

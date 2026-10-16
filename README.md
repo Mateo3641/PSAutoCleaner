@@ -25,8 +25,9 @@ It automatically monitors and cleans up protection regions belonging to inactive
 | `/psac check [player]` | `psautocleaner.check` / `.check.others` | Check inactivity status and claim deletion timer |
 | `/psac region` | `psautocleaner.check` | Inspect the claim you are currently standing inside |
 | `/psac status` | `psautocleaner.admin` | View scheduler status, next sweep countdown, and active settings |
-| `/psac run [action] [days] [world]` | `psautocleaner.admin` | Force an immediate cleanup sweep |
-| `/psac preview [days] [world]` | `psautocleaner.admin` | Preview regions eligible for deletion |
+| `/psac logs <player>` | `psautocleaner.admin` / `.logs` | Query persistent SQLite audit records of deleted claims |
+| `/psac run [action] [time] [world]` | `psautocleaner.admin` | Force an immediate cleanup sweep |
+| `/psac preview [time] [world]` | `psautocleaner.admin` | Preview regions eligible for deletion |
 | `/psac reload` | `psautocleaner.admin` | Reload configuration and restart scheduled tasks |
 
 *Bypass Permission:* `psautocleaner.bypass` (exempts player from automated deletion).
@@ -94,6 +95,17 @@ time-format: "short"
 # Whether to check region members (added via /ps add) in addition to owners
 # If true, a claim won't expire as long as at least ONE member or owner remains active
 check-members: true
+
+# Number of claims deleted per server tick (20 TPS protection against tick lag spikes)
+batch-size-per-tick: 2
+
+# Grouped multiline broadcast when a player's claims are cleaned up
+broadcast:
+  enabled: true
+  lines:
+    - "<gold><bold>¡LIMPIEZA DE INACTIVIDAD!</bold></gold>"
+    - "<yellow>Las protecciones de <gold><player></gold> han sido eliminadas por inactividad (<gold><time_inactive></gold> sin jugar).</yellow>"
+    - "<gray>¡El terreno ha quedado libre para nuevos aventureros!</gray>"
 ```
 
 ---
@@ -106,4 +118,4 @@ Requires Java 21 and Maven:
 mvn clean package
 ```
 
-The compiled shaded jar will be located in `target/psautocleaner-1.0.0-SNAPSHOT.jar`.
+The compiled shaded jar will be located in `target/psautocleaner-1.0.4.jar`.

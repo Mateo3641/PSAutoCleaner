@@ -4,6 +4,7 @@ import dev.sh4dow.psautocleaner.model.CleanupAction;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +34,10 @@ class ConfigManagerTest {
                 null,
                 true,
                 "",
-                true
+                true,
+                0, // invalid batch size -> defaults to 2
+                true,
+                Collections.emptyList()
         );
 
         assertThat(config.inactiveDuration()).isEqualTo(Duration.ofDays(30));
@@ -46,6 +50,9 @@ class ConfigManagerTest {
         assertThat(config.targetWorlds()).isEmpty();
         assertThat(config.timeFormat()).isEqualTo("short");
         assertThat(config.checkMembers()).isTrue();
+        assertThat(config.batchSizePerTick()).isEqualTo(2);
+        assertThat(config.broadcastEnabled()).isTrue();
+        assertThat(config.broadcastLines()).isNotEmpty();
     }
 
     @Test
@@ -59,7 +66,10 @@ class ConfigManagerTest {
                 List.of("world", "world_nether"),
                 false,
                 "verbose",
-                false
+                false,
+                5,
+                true,
+                List.of("Line 1", "Line 2")
         );
 
         assertThat(config.enabled()).isTrue();
@@ -71,5 +81,8 @@ class ConfigManagerTest {
         assertThat(config.logToConsole()).isFalse();
         assertThat(config.timeFormat()).isEqualTo("verbose");
         assertThat(config.checkMembers()).isFalse();
+        assertThat(config.batchSizePerTick()).isEqualTo(5);
+        assertThat(config.broadcastEnabled()).isTrue();
+        assertThat(config.broadcastLines()).containsExactly("Line 1", "Line 2");
     }
 }

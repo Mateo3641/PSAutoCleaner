@@ -55,6 +55,7 @@ help:
   check: "<gold>/psac check [player]</gold> <dark_gray>-</dark_gray> <gray>Check claim expiration timer"
   region: "<gold>/psac region</gold> <dark_gray>-</dark_gray> <gray>Inspect the ProtectionStone claim you are standing in"
   status: "<gold>/psac status</gold> <dark_gray>-</dark_gray> <gray>View scheduler and configuration status"
+  logs: "<gold>/psac logs <player></gold> <dark_gray>-</dark_gray> <gray>View audit history of deleted claims (Admin)"
   run: "<gold>/psac run [action] [time] [world]</gold> <dark_gray>-</dark_gray> <gray>Force a cleanup sweep now (Admin)"
   preview: "<gold>/psac preview [time] [world]</gold> <dark_gray>-</dark_gray> <gray>Preview cleanup targets (Admin)"
   reload: "<gold>/psac reload</gold> <dark_gray>-</dark_gray> <gray>Reload configuration and tasks (Admin)"

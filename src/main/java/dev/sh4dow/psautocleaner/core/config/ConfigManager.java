@@ -91,6 +91,10 @@ public class ConfigManager {
             initialDelayDuration = java.time.Duration.ofMinutes(10);
         }
 
+        int batchSizePerTick = config.getInt("batch-size-per-tick", 2);
+        boolean broadcastEnabled = config.getBoolean("broadcast.enabled", true);
+        List<String> broadcastLines = config.getStringList("broadcast.lines");
+
         this.cleanConfig = new CleanConfig(
                 enabled,
                 inactiveDuration,
@@ -100,7 +104,10 @@ public class ConfigManager {
                 targetWorlds,
                 logToConsole,
                 timeFormat,
-                checkMembers
+                checkMembers,
+                batchSizePerTick,
+                broadcastEnabled,
+                broadcastLines
         );
 
         loadMessages();

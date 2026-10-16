@@ -3,12 +3,17 @@ package dev.sh4dow.psautocleaner.command;
 import dev.sh4dow.psautocleaner.core.config.CleanConfig;
 import dev.sh4dow.psautocleaner.core.config.ConfigManager;
 import dev.sh4dow.psautocleaner.core.message.MessageService;
+import dev.sh4dow.psautocleaner.model.AuditLogEntry;
 import dev.sh4dow.psautocleaner.model.CleanupAction;
 import dev.sh4dow.psautocleaner.model.InactivityProfile;
 import dev.sh4dow.psautocleaner.model.RegionInactivitySummary;
+import dev.sh4dow.psautocleaner.service.AuditService;
 import dev.sh4dow.psautocleaner.service.CleanerService;
 import dev.sh4dow.psautocleaner.service.InactivityService;
 import dev.sh4dow.psautocleaner.service.RegionInspectorService;
+import dev.sh4dow.psautocleaner.util.DurationParser;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -19,14 +24,17 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * Command executor handling all PSAutoCleaner subcommands.
+ * Main command executor for /psautocleaner (and aliases /psac, /psclean, /psautoclean).
  */
 public class PSAutoCleanerCommand implements CommandExecutor {
 
     private static final String PERM_ADMIN = "psautocleaner.admin";
+    private static final String PERM_LOGS = "psautocleaner.logs";
     private static final String PERM_CHECK = "psautocleaner.check";
     private static final String PERM_CHECK_OTHERS = "psautocleaner.check.others";
 
@@ -35,19 +43,22 @@ public class PSAutoCleanerCommand implements CommandExecutor {
     private final InactivityService inactivityService;
     private final CleanerService cleanerService;
     private final RegionInspectorService regionInspectorService;
+    private final AuditService auditService;
 
     public PSAutoCleanerCommand(
             ConfigManager configManager,
             MessageService messageService,
             InactivityService inactivityService,
             CleanerService cleanerService,
-            RegionInspectorService regionInspectorService
+            RegionInspectorService regionInspectorService,
+            AuditService auditService
     ) {
         this.configManager = configManager;
         this.messageService = messageService;
         this.inactivityService = inactivityService;
         this.cleanerService = cleanerService;
         this.regionInspectorService = regionInspectorService;
+        this.auditService = auditService;
     }
 
     @Override
@@ -67,6 +78,7 @@ public class PSAutoCleanerCommand implements CommandExecutor {
             case "check" -> handleCheck(sender, args);
             case "region" -> handleRegion(sender);
             case "status" -> handleStatus(sender);
+            case "logs" -> handleLogs(sender, args);
             case "run" -> handleRun(sender, args, false);
             case "preview" -> handleRun(sender, args, true);
             case "reload" -> handleReload(sender);
@@ -153,40 +165,48 @@ public class PSAutoCleanerCommand implements CommandExecutor {
                 "world", summary.worldName()
         ));
 
-        if (!summary.hasOwner()) {
+        if (summary.ownerName() != null) {
+            messageService.sendWithoutPrefix(player, "region.owner", Map.of("owner", summary.ownerName()));
+        } else {
             messageService.sendWithoutPrefix(player, "region.no-owner", Collections.emptyMap());
+        }
+
+        InactivityProfile profile = summary.getProfile().orElse(null);
+        if (profile == null) {
             return;
         }
 
-        messageService.sendWithoutPrefix(player, "region.owner", Map.of("owner", summary.ownerName()));
+        if (profile.isExempt()) {
+            messageService.sendWithoutPrefix(player, "region.owner-exempt", Collections.emptyMap());
+            return;
+        }
 
-        InactivityProfile profile = summary.getProfile().orElse(summary.ownerProfile());
-        if (profile != null) {
-            String timeRemaining = inactivityService.formatDuration(profile.millisRemaining());
-            if (profile.isExempt()) {
-                messageService.sendWithoutPrefix(player, "region.owner-exempt", Collections.emptyMap());
-            } else if (profile.isExpired()) {
+        String timeRemaining = inactivityService.formatDuration(profile.millisRemaining());
+        String daysInactive = String.valueOf(profile.daysInactive());
+
+        if (summary.isProtectedByMember()) {
+            if (profile.isOnline()) {
+                messageService.sendWithoutPrefix(player, "region.member-active", Map.of(
+                        "member", summary.mostActivePlayerName(),
+                        "time_remaining", timeRemaining
+                ));
+            } else {
+                messageService.sendWithoutPrefix(player, "region.member-inactive", Map.of(
+                        "member", summary.mostActivePlayerName(),
+                        "days_inactive", daysInactive,
+                        "time_remaining", timeRemaining
+                ));
+            }
+        } else {
+            if (profile.isExpired()) {
                 messageService.sendWithoutPrefix(player, "region.owner-expired", Collections.emptyMap());
-            } else if (summary.isProtectedByMember()) {
-                if (profile.isOnline()) {
-                    messageService.sendWithoutPrefix(player, "region.member-active", Map.of(
-                            "member", summary.mostActivePlayerName(),
-                            "time_remaining", timeRemaining
-                    ));
-                } else {
-                    messageService.sendWithoutPrefix(player, "region.member-inactive", Map.of(
-                            "member", summary.mostActivePlayerName(),
-                            "days_inactive", String.valueOf(profile.daysInactive()),
-                            "time_remaining", timeRemaining
-                    ));
-                }
             } else if (profile.isOnline()) {
                 messageService.sendWithoutPrefix(player, "region.owner-active", Map.of(
                         "time_remaining", timeRemaining
                 ));
             } else {
                 messageService.sendWithoutPrefix(player, "region.owner-inactive", Map.of(
-                        "days_inactive", String.valueOf(profile.daysInactive()),
+                        "days_inactive", daysInactive,
                         "time_remaining", timeRemaining
                 ));
             }
@@ -202,7 +222,7 @@ public class PSAutoCleanerCommand implements CommandExecutor {
         CleanConfig config = configManager.getCleanConfig();
         String nextRun = cleanerService.getNextScheduledRun()
                 .map(instant -> {
-                    long millis = java.time.Duration.between(Instant.now(), instant).toMillis();
+                    long millis = Duration.between(Instant.now(), instant).toMillis();
                     return millis > 0 ? inactivityService.formatDuration(millis) : "Imminent";
                 })
                 .orElse("Disabled");
@@ -222,17 +242,70 @@ public class PSAutoCleanerCommand implements CommandExecutor {
         messageService.sendWithoutPrefix(sender, "status.enabled", Map.of("value", config.enabled() ? "<green>Yes</green>" : "<red>No</red>"));
         messageService.sendWithoutPrefix(sender, "status.threshold", Map.of(
                 "days", String.valueOf(config.inactiveDays()),
-                "time", dev.sh4dow.psautocleaner.util.DurationParser.formatShort(config.inactiveDuration())
+                "time", DurationParser.formatShort(config.inactiveDuration())
         ));
         messageService.sendWithoutPrefix(sender, "status.action", Map.of("action", config.cleanupAction().getCommandArg()));
         messageService.sendWithoutPrefix(sender, "status.interval", Map.of(
                 "hours", String.valueOf(config.intervalHours()),
-                "interval", dev.sh4dow.psautocleaner.util.DurationParser.formatShort(config.intervalDuration()),
-                "time", dev.sh4dow.psautocleaner.util.DurationParser.formatShort(config.intervalDuration())
+                "interval", DurationParser.formatShort(config.intervalDuration()),
+                "time", DurationParser.formatShort(config.intervalDuration())
         ));
         messageService.sendWithoutPrefix(sender, "status.next-run", Map.of("time", nextRun));
         messageService.sendWithoutPrefix(sender, "status.target-worlds", Map.of("worlds", worlds));
         messageService.sendWithoutPrefix(sender, "status.last-run", Map.of("time", lastRun));
+    }
+
+    private void handleLogs(CommandSender sender, String[] args) {
+        if (!sender.hasPermission(PERM_ADMIN) && !sender.hasPermission(PERM_LOGS)) {
+            messageService.send(sender, "no-permission", Collections.emptyMap());
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Usage: /psac logs <player></red>"));
+            return;
+        }
+
+        String targetName = args[1];
+        sender.sendMessage(MiniMessage.miniMessage().deserialize("<gray>Querying audit records for <gold>" + targetName + "</gold>...</gray>"));
+
+        auditService.findLogs(targetName, 15).thenAccept(logs -> {
+            boolean alsoSendToConsole = !(sender instanceof Player) && sender != Bukkit.getConsoleSender();
+
+            if (logs.isEmpty()) {
+                Component msg = MiniMessage.miniMessage().deserialize(
+                        "<yellow>No deletion logs found for player <gold>" + targetName + "</gold>.</yellow>"
+                );
+                sender.sendMessage(msg);
+                if (alsoSendToConsole) {
+                    Bukkit.getConsoleSender().sendMessage(msg);
+                }
+                return;
+            }
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+
+            Component header = MiniMessage.miniMessage().deserialize(
+                    "<gray>------- <gradient:#00c6ff:#0072ff><bold>Audit Logs for " + targetName + "</bold></gradient> <gray>-------"
+            );
+            sender.sendMessage(header);
+            if (alsoSendToConsole) {
+                Bukkit.getConsoleSender().sendMessage(header);
+            }
+
+            for (AuditLogEntry entry : logs) {
+                String date = formatter.format(entry.getDeletedInstant());
+                Component entryMsg = MiniMessage.miniMessage().deserialize(
+                        "<yellow>• <gold>" + entry.regionId() + "</gold> <dark_gray>[" + date + "]</dark_gray>\n" +
+                        "  <gray>World: <white>" + entry.world() + "</white> | Coordinates: <white>X: " + entry.x() + " Y: " + entry.y() + " Z: " + entry.z() + "</white>\n" +
+                        "  <gray>Reason: <red>" + entry.reason() + "</red>"
+                );
+                sender.sendMessage(entryMsg);
+                if (alsoSendToConsole) {
+                    Bukkit.getConsoleSender().sendMessage(entryMsg);
+                }
+            }
+        });
     }
 
     private void handleRun(CommandSender sender, String[] args, boolean isPreview) {
@@ -243,11 +316,9 @@ public class PSAutoCleanerCommand implements CommandExecutor {
 
         CleanConfig config = configManager.getCleanConfig();
         CleanupAction action = isPreview ? CleanupAction.PREVIEW : config.cleanupAction();
-        java.time.Duration durationThreshold = config.inactiveDuration();
+        Duration durationThreshold = config.inactiveDuration();
         List<String> explicitWorlds = Collections.emptyList();
 
-        // Parameter parsing: /psac run [action] [time] [world]
-        // or /psac preview [time] [world]
         int argOffset = 1;
         if (!isPreview && args.length > argOffset) {
             Optional<CleanupAction> parsedAction = CleanupAction.fromString(args[argOffset]);
@@ -259,7 +330,7 @@ public class PSAutoCleanerCommand implements CommandExecutor {
 
         if (args.length > argOffset) {
             try {
-                durationThreshold = dev.sh4dow.psautocleaner.util.DurationParser.parse(args[argOffset]);
+                durationThreshold = DurationParser.parse(args[argOffset]);
                 argOffset++;
             } catch (IllegalArgumentException e) {
                 sender.sendMessage("§cInvalid duration format: '" + args[argOffset] + "'. Examples: 3m, 5h, 30d");
@@ -290,6 +361,10 @@ public class PSAutoCleanerCommand implements CommandExecutor {
         messageService.sendWithoutPrefix(sender, "help.check", Collections.emptyMap());
         messageService.sendWithoutPrefix(sender, "help.region", Collections.emptyMap());
         messageService.sendWithoutPrefix(sender, "help.status", Collections.emptyMap());
+
+        if (sender.hasPermission(PERM_ADMIN) || sender.hasPermission(PERM_LOGS)) {
+            messageService.sendWithoutPrefix(sender, "help.logs", Collections.emptyMap());
+        }
 
         if (sender.hasPermission(PERM_ADMIN)) {
             messageService.sendWithoutPrefix(sender, "help.run", Collections.emptyMap());

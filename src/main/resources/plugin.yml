@@ -13,12 +13,15 @@ softdepend:
 commands:
   psautocleaner:
     description: PSAutoCleaner administrative and player commands
-    aliases: [psclean, psac]
-    usage: /<command> [check|region|status|run|preview|reload]
+    aliases: [psclean, psac, psautoclean]
+    usage: /<command> [check|region|status|logs|run|preview|reload]
 
 permissions:
   psautocleaner.admin:
     description: Grants full administrative access to trigger sweeps, previews and reload the plugin
+    default: op
+  psautocleaner.logs:
+    description: Allows viewing audit logs of deleted claims for any player
     default: op
   psautocleaner.check:
     description: Allows checking own claim expiration timer

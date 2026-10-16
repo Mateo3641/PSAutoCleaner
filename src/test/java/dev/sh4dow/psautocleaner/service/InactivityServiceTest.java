@@ -35,7 +35,10 @@ class InactivityServiceTest {
                 Collections.emptyList(),
                 true,
                 "short",
-                true
+                true,
+                2,
+                true,
+                Collections.emptyList()
         );
         when(configManager.getCleanConfig()).thenReturn(config);
         inactivityService = new InactivityService(configManager);
@@ -123,7 +126,10 @@ class InactivityServiceTest {
                 Collections.emptyList(),
                 true,
                 "short",
-                true
+                true,
+                2,
+                true,
+                Collections.emptyList()
         );
         when(configManager.getCleanConfig()).thenReturn(minuteConfig);
 
@@ -183,7 +189,10 @@ class InactivityServiceTest {
                 Collections.emptyList(),
                 true,
                 "verbose",
-                true
+                true,
+                2,
+                true,
+                Collections.emptyList()
         );
         when(configManager.getCleanConfig()).thenReturn(verboseConfig);
         assertThat(inactivityService.formatDuration(duration)).isEqualTo("5d 3h 15m");

@@ -8,16 +8,18 @@ import dev.sh4dow.psautocleaner.core.scheduler.PaperTaskScheduler;
 import dev.sh4dow.psautocleaner.core.scheduler.TaskScheduler;
 import dev.sh4dow.psautocleaner.hook.PlaceholderApiHook;
 import dev.sh4dow.psautocleaner.hook.ProtectionStonesHook;
+import dev.sh4dow.psautocleaner.service.AuditService;
 import dev.sh4dow.psautocleaner.service.CleanerService;
 import dev.sh4dow.psautocleaner.service.InactivityService;
 import dev.sh4dow.psautocleaner.service.RegionInspectorService;
+import dev.sh4dow.psautocleaner.storage.AuditLogRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * PSAutoCleaner main plugin class.
- * Orchestrates lifecycle, dependency hooks, services, and scheduled tasks.
+ * PSAutoCleaner Main Plugin Class.
+ * Autonomous auto-cleaner companion addon for ProtectionStones on Paper 1.21+.
  */
 public class PSAutoCleanerPlugin extends JavaPlugin {
 
@@ -27,6 +29,8 @@ public class PSAutoCleanerPlugin extends JavaPlugin {
     private InactivityService inactivityService;
     private CleanerService cleanerService;
     private RegionInspectorService regionInspectorService;
+    private AuditLogRepository auditLogRepository;
+    private AuditService auditService;
     private PlaceholderApiHook papiHook;
 
     @Override
@@ -47,13 +51,17 @@ public class PSAutoCleanerPlugin extends JavaPlugin {
         // 3. Initialize message service (MiniMessage)
         this.messageService = new MessageService(configManager);
 
-        // 4. Initialize scheduler and core services
+        // 4. Initialize storage & audit services
+        this.auditLogRepository = new AuditLogRepository(getDataFolder(), getLogger());
+        this.auditService = new AuditService(auditLogRepository);
+
+        // 5. Initialize scheduler and core services
         this.taskScheduler = new PaperTaskScheduler(this);
         this.inactivityService = new InactivityService(configManager);
-        this.cleanerService = new CleanerService(this, configManager, messageService, taskScheduler, inactivityService);
+        this.cleanerService = new CleanerService(this, configManager, messageService, taskScheduler, inactivityService, auditService);
         this.regionInspectorService = new RegionInspectorService(configManager, inactivityService);
 
-        // 5. Register commands and tab completion
+        // 6. Register commands and tab completion
         PluginCommand command = getCommand("psautocleaner");
         if (command != null) {
             command.setExecutor(new PSAutoCleanerCommand(
@@ -61,14 +69,15 @@ public class PSAutoCleanerPlugin extends JavaPlugin {
                     messageService,
                     inactivityService,
                     cleanerService,
-                    regionInspectorService
+                    regionInspectorService,
+                    auditService
             ));
             command.setTabCompleter(new PSAutoCleanerTabCompleter());
         } else {
             getLogger().warning("Could not register /psautocleaner command from plugin.yml!");
         }
 
-        // 6. Register PlaceholderAPI expansion if present
+        // 7. Register PlaceholderAPI expansion if present
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             this.papiHook = new PlaceholderApiHook(
                     this,
@@ -82,7 +91,7 @@ public class PSAutoCleanerPlugin extends JavaPlugin {
             }
         }
 
-        // 7. Start autonomous periodic task
+        // 8. Start autonomous periodic task
         this.cleanerService.startScheduledTask();
 
         getLogger().info("PSAutoCleaner enabled successfully.");
@@ -98,6 +107,10 @@ public class PSAutoCleanerPlugin extends JavaPlugin {
 
         if (taskScheduler != null) {
             taskScheduler.cancelAll();
+        }
+
+        if (auditService != null) {
+            auditService.close();
         }
 
         if (papiHook != null) {
@@ -128,5 +141,9 @@ public class PSAutoCleanerPlugin extends JavaPlugin {
 
     public RegionInspectorService getRegionInspectorService() {
         return regionInspectorService;
+    }
+
+    public AuditService getAuditService() {
+        return auditService;
     }
 }

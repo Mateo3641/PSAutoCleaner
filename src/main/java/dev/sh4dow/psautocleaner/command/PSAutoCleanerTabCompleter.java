@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class PSAutoCleanerTabCompleter implements TabCompleter {
 
     private static final String PERM_ADMIN = "psautocleaner.admin";
+    private static final String PERM_LOGS = "psautocleaner.logs";
     private static final String PERM_CHECK_OTHERS = "psautocleaner.check.others";
 
     @Override
@@ -33,6 +34,9 @@ public class PSAutoCleanerTabCompleter implements TabCompleter {
     ) {
         if (args.length == 1) {
             List<String> subs = new ArrayList<>(List.of("check", "region", "help"));
+            if (sender.hasPermission(PERM_ADMIN) || sender.hasPermission(PERM_LOGS)) {
+                subs.add("logs");
+            }
             if (sender.hasPermission(PERM_ADMIN)) {
                 subs.addAll(List.of("status", "run", "preview", "reload"));
             }
@@ -41,6 +45,11 @@ public class PSAutoCleanerTabCompleter implements TabCompleter {
 
         String sub = args[0].toLowerCase();
         if (sub.equals("check") && args.length == 2 && sender.hasPermission(PERM_CHECK_OTHERS)) {
+            List<String> players = Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+            return filter(players, args[1]);
+        }
+
+        if (sub.equals("logs") && args.length == 2 && (sender.hasPermission(PERM_ADMIN) || sender.hasPermission(PERM_LOGS))) {
             List<String> players = Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
             return filter(players, args[1]);
         }

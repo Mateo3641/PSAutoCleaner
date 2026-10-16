@@ -8,7 +8,7 @@ enabled: true
 
 # Inactivity threshold required before claims qualify for cleanup.
 # Supports flexible time units: s (seconds), m (minutes), h (hours), d (days), w (weeks), mo (months)
-# Examples: "30d" (production), "14d", "12h", "3m" (testing)
+# Examples: "30d" (production default), "14d", "12h", "3m" (for fast testing)
 # (Legacy 'inactive-days: 30' is also fully supported)
 inactive-time: "30d"
 
@@ -19,7 +19,7 @@ cleanup-action: "remove"
 # Repetitive background task scheduler configuration
 scheduler:
   # How often the cleanup sweep runs automatically.
-  # Supports any time duration: "24h" (once a day), "12h", "1h", "30m", "3m" (for fast testing)
+  # Supports any time duration: "24h" (once a day), "12h", "1h", "30m", "3m" (for testing)
   # (Legacy 'interval-hours: 24' is also fully supported)
   interval: "24h"
 
@@ -27,6 +27,11 @@ scheduler:
   # Examples: "10m", "5m", "1m", "30s"
   # (Legacy 'initial-delay-minutes: 10' is also fully supported)
   initial-delay: "10m"
+
+# Number of regions to delete per server tick during a cleanup sweep.
+# Pacing deletions across ticks guarantees 20.0 TPS stability with zero lag spikes.
+# Recommended: 1 - 5 (default: 2)
+batch-size-per-tick: 2
 
 # Target worlds where cleanup should run
 # Leave empty ([]) to target ALL loaded worlds on the server.
@@ -46,3 +51,14 @@ time-format: "short"
 # Whether to check region members (added via /ps add) in addition to owners
 # If true, a claim won't expire as long as at least ONE member or owner remains active
 check-members: true
+
+# Broadcast announcement sent to all online players when a player's claims are eliminated.
+# Sent ONCE per player (never spammed per individual claim).
+# Supports MiniMessage formatting, hex colors, and gradients.
+# Available placeholders: <player> (player name), <time> (inactivity duration)
+broadcast:
+  enabled: true
+  lines:
+    - "<gradient:#ff5555:#ff0000><bold>¡LIMPIEZA DE INACTIVIDAD!</bold></gradient>"
+    - "<gray>Las protecciones de <gold><player></gold> han sido eliminadas por inactividad (<time> sin jugar)."
+    - "<yellow>¡El terreno ha quedado libre para nuevos aventureros!</yellow>"

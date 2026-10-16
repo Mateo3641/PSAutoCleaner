@@ -5,7 +5,7 @@
 
     <groupId>dev.sh4dow</groupId>
     <artifactId>psautocleaner</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <packaging>jar</packaging>
 
     <name>PSAutoCleaner</name>
@@ -84,6 +84,21 @@
             </exclusions>
         </dependency>
 
+        <!-- SQLite JDBC (Provided by Paper runtime) -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.49.1.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- HikariCP (Connection pool for asynchronous SQLite audit logs) -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>5.1.0</version>
+        </dependency>
+
         <!-- Testing: MockBukkit & JUnit 5 -->
         <dependency>
             <groupId>org.mockbukkit.mockbukkit</groupId>
@@ -151,6 +166,12 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.zaxxer.hikari</pattern>
+                                    <shadedPattern>dev.sh4dow.psautocleaner.libs.hikari</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>

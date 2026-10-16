@@ -29,6 +29,7 @@ class CleanerServiceTest {
     private MessageService messageService;
     private TaskScheduler scheduler;
     private InactivityService inactivityService;
+    private AuditService auditService;
     private CleanerService cleanerService;
 
     @BeforeEach
@@ -40,6 +41,7 @@ class CleanerServiceTest {
         messageService = Mockito.mock(MessageService.class);
         scheduler = Mockito.mock(TaskScheduler.class);
         inactivityService = Mockito.mock(InactivityService.class);
+        auditService = Mockito.mock(AuditService.class);
 
         // Immediate sync task execution
         doAnswer(invocation -> {
@@ -57,11 +59,14 @@ class CleanerServiceTest {
                 Collections.emptyList(),
                 false,
                 "short",
-                true
+                true,
+                2,
+                true,
+                Collections.emptyList()
         );
         when(configManager.getCleanConfig()).thenReturn(config);
 
-        cleanerService = new CleanerService(plugin, configManager, messageService, scheduler, inactivityService);
+        cleanerService = new CleanerService(plugin, configManager, messageService, scheduler, inactivityService, auditService);
     }
 
     @Test
@@ -73,7 +78,7 @@ class CleanerServiceTest {
             return null;
         }).when(blockingScheduler).runSync(any(Runnable.class));
 
-        CleanerService lockedService = new CleanerService(plugin, configManager, messageService, blockingScheduler, inactivityService);
+        CleanerService lockedService = new CleanerService(plugin, configManager, messageService, blockingScheduler, inactivityService, auditService);
 
         // First call starts execution
         CompletableFuture<CleanupExecutionResult> firstCall = lockedService.executeSweep(

@@ -14,6 +14,7 @@ import dev.sh4dow.psautocleaner.model.CleanupAction;
 import dev.sh4dow.psautocleaner.model.CleanupExecutionResult;
 import dev.sh4dow.psautocleaner.model.InactivityProfile;
 import dev.sh4dow.psautocleaner.util.DurationParser;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
@@ -28,7 +29,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Service orchestrating scheduled and on-demand cleanup sweeps across target worlds.
- * Executes direct claim evaluations and deletions synchronously on the server thread via ProtectionStones API.
+ * Employs a paced tick-throttled deletion queue and asynchronous SQLite audit logging
+ * to ensure 20.0 TPS stability during massive deletion runs.
  */
 public class CleanerService {
 
@@ -37,24 +39,35 @@ public class CleanerService {
     private final MessageService messageService;
     private final TaskScheduler scheduler;
     private final InactivityService inactivityService;
+    private final AuditService auditService;
 
     private final AtomicBoolean isExecuting = new AtomicBoolean(false);
     private TaskScheduler.CancellableTask currentTimerTask;
     private Instant nextScheduledRun;
     private CleanupExecutionResult lastResult;
 
+    private record ExpiredClaim(
+            UUID ownerUuid,
+            String ownerName,
+            PSRegion psRegion,
+            String worldName,
+            long inactiveMillis
+    ) {}
+
     public CleanerService(
             JavaPlugin plugin,
             ConfigManager configManager,
             MessageService messageService,
             TaskScheduler scheduler,
-            InactivityService inactivityService
+            InactivityService inactivityService,
+            AuditService auditService
     ) {
         this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
         this.configManager = Objects.requireNonNull(configManager, "configManager cannot be null");
         this.messageService = Objects.requireNonNull(messageService, "messageService cannot be null");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler cannot be null");
         this.inactivityService = Objects.requireNonNull(inactivityService, "inactivityService cannot be null");
+        this.auditService = Objects.requireNonNull(auditService, "auditService cannot be null");
     }
 
     /**
@@ -128,7 +141,7 @@ public class CleanerService {
 
     /**
      * Executes a cleanup sweep across targeted worlds with fine-grained duration precision.
-     * Evaluates and mutates claims directly on the main thread via ProtectionStones API.
+     * Queues deletions across server ticks to eliminate tick lag spikes and records audit logs.
      */
     public CompletableFuture<CleanupExecutionResult> executeSweep(
             CleanupAction action,
@@ -147,7 +160,6 @@ public class CleanerService {
             return future;
         }
 
-        // Ensure execution happens on main thread
         scheduler.runSync(() -> {
             long startTime = System.currentTimeMillis();
             List<String> worldsToProcess = resolveTargetWorlds(explicitWorlds);
@@ -158,7 +170,7 @@ public class CleanerService {
 
             int processedWorlds = 0;
             int totalRegionsEvaluated = 0;
-            int totalRegionsCleaned = 0;
+            List<ExpiredClaim> allExpiredClaims = new ArrayList<>();
             List<String> affectedRegionIds = new ArrayList<>();
 
             boolean checkMembers = configManager.getCleanConfig().checkMembers();
@@ -179,9 +191,7 @@ public class CleanerService {
                         continue;
                     }
 
-                    // Snapshot regions to avoid concurrent modification issues during iteration
                     List<ProtectedRegion> candidateRegions = new ArrayList<>(regionManager.getRegions().values());
-                    List<PSRegion> expiredRegions = new ArrayList<>();
 
                     for (ProtectedRegion wgRegion : candidateRegions) {
                         PSRegion psRegion = PSRegion.fromWGRegion(world, wgRegion);
@@ -193,9 +203,15 @@ public class CleanerService {
                         Set<UUID> ownerUuids = wgRegion.getOwners().getUniqueIds();
                         Set<UUID> memberUuids = checkMembers ? wgRegion.getMembers().getUniqueIds() : Collections.emptySet();
 
-                        // If the region has no owners or members, it is an abandoned orphan
+                        // Orphaned region with no owners or members
                         if (ownerUuids.isEmpty() && memberUuids.isEmpty()) {
-                            expiredRegions.add(psRegion);
+                            allExpiredClaims.add(new ExpiredClaim(
+                                    UUID.randomUUID(),
+                                    "Orphaned/Server",
+                                    psRegion,
+                                    worldName,
+                                    thresholdMillis
+                            ));
                             affectedRegionIds.add(wgRegion.getId());
                             continue;
                         }
@@ -224,21 +240,24 @@ public class CleanerService {
                             continue;
                         }
 
-                        // Region qualifies for cleanup if even the most active affiliate exceeded the threshold
                         if (mostActive != null && mostActive.inactiveMillis() >= thresholdMillis) {
-                            expiredRegions.add(psRegion);
+                            // Find primary owner name
+                            UUID primaryOwnerUuid = ownerUuids.stream().findFirst().orElse(null);
+                            String primaryOwnerName = "Unknown";
+                            if (primaryOwnerUuid != null) {
+                                OfflinePlayer op = Bukkit.getOfflinePlayer(primaryOwnerUuid);
+                                primaryOwnerName = op.getName() != null ? op.getName() : primaryOwnerUuid.toString();
+                            }
+
+                            allExpiredClaims.add(new ExpiredClaim(
+                                    primaryOwnerUuid != null ? primaryOwnerUuid : UUID.randomUUID(),
+                                    primaryOwnerName,
+                                    psRegion,
+                                    worldName,
+                                    mostActive.inactiveMillis()
+                            ));
                             affectedRegionIds.add(wgRegion.getId());
                         }
-                    }
-
-                    // Execute action
-                    if (action == CleanupAction.REMOVE) {
-                        for (PSRegion psRegion : expiredRegions) {
-                            psRegion.deleteRegion(true);
-                            totalRegionsCleaned++;
-                        }
-                    } else {
-                        totalRegionsCleaned += expiredRegions.size();
                     }
 
                     if (feedbackSender != null) {
@@ -246,44 +265,52 @@ public class CleanerService {
                                 "world", world.getName(),
                                 "action", action.getCommandArg(),
                                 "time", DurationParser.formatShort(durationThreshold),
-                                "found", String.valueOf(expiredRegions.size()),
-                                "cleaned", String.valueOf(action == CleanupAction.REMOVE ? expiredRegions.size() : 0),
+                                "found", String.valueOf(affectedRegionIds.size()),
+                                "cleaned", String.valueOf(action == CleanupAction.REMOVE ? affectedRegionIds.size() : 0),
                                 "days", String.valueOf(Math.max(1, durationThreshold.toDays()))
-                        ));
-                    }
-
-                    if (configManager.getCleanConfig().logToConsole()) {
-                        plugin.getLogger().info(String.format(
-                                "[World: %s] %s %d claim(s) (threshold: %s)",
-                                world.getName(),
-                                action == CleanupAction.REMOVE ? "Deleted" : "Previewed",
-                                expiredRegions.size(),
-                                DurationParser.formatShort(durationThreshold)
                         ));
                     }
                 }
 
-                long duration = System.currentTimeMillis() - startTime;
-                CleanupExecutionResult result = CleanupExecutionResult.ofSuccess(
-                        action,
+                // If PREVIEW or no claims found, finish immediately
+                if (action == CleanupAction.PREVIEW || allExpiredClaims.isEmpty()) {
+                    long duration = System.currentTimeMillis() - startTime;
+                    CleanupExecutionResult result = CleanupExecutionResult.ofSuccess(
+                            action,
+                            durationThreshold,
+                            worldsToProcess,
+                            processedWorlds,
+                            totalRegionsEvaluated,
+                            allExpiredClaims.size(),
+                            affectedRegionIds,
+                            duration
+                    );
+
+                    this.lastResult = result;
+                    if (feedbackSender != null) {
+                        messageService.send(feedbackSender, "cleanup.completed", Map.of(
+                                "time", String.valueOf(duration),
+                                "count", String.valueOf(allExpiredClaims.size())
+                        ));
+                    }
+                    isExecuting.set(false);
+                    future.complete(result);
+                    return;
+                }
+
+                // If REMOVE, execute deletions via paced tick queue (anti-lag batching)
+                processPacedDeletionQueue(
+                        allExpiredClaims,
                         durationThreshold,
                         worldsToProcess,
                         processedWorlds,
                         totalRegionsEvaluated,
-                        totalRegionsCleaned,
                         affectedRegionIds,
-                        duration
+                        startTime,
+                        feedbackSender,
+                        future
                 );
 
-                this.lastResult = result;
-                if (feedbackSender != null) {
-                    messageService.send(feedbackSender, "cleanup.completed", Map.of(
-                            "time", String.valueOf(duration),
-                            "count", String.valueOf(totalRegionsCleaned)
-                    ));
-                }
-
-                future.complete(result);
             } catch (Exception e) {
                 plugin.getLogger().severe("Unexpected error during cleanup sweep: " + e.getMessage());
                 CleanupExecutionResult result = CleanupExecutionResult.ofFailure(
@@ -293,13 +320,143 @@ public class CleanerService {
                         e.getMessage()
                 );
                 this.lastResult = result;
-                future.complete(result);
-            } finally {
                 isExecuting.set(false);
+                future.complete(result);
             }
         });
 
         return future;
+    }
+
+    /**
+     * Executes claim deletions smoothly across server ticks (e.g. 2 per tick).
+     * Triggers a grouped multiline broadcast per player when all of that player's claims are purged.
+     */
+    private void processPacedDeletionQueue(
+            List<ExpiredClaim> claimsToDelete,
+            Duration durationThreshold,
+            List<String> worldsToProcess,
+            int processedWorlds,
+            int totalRegionsEvaluated,
+            List<String> affectedRegionIds,
+            long startTime,
+            CommandSender feedbackSender,
+            CompletableFuture<CleanupExecutionResult> future
+    ) {
+        CleanConfig config = configManager.getCleanConfig();
+        int batchSize = config.batchSizePerTick();
+
+        // Track remaining claims per player to emit a single grouped broadcast per player
+        Map<UUID, Integer> remainingClaimsPerOwner = new HashMap<>();
+        Map<UUID, String> ownerNames = new HashMap<>();
+        Map<UUID, Long> maxInactivePerOwner = new HashMap<>();
+
+        for (ExpiredClaim claim : claimsToDelete) {
+            remainingClaimsPerOwner.merge(claim.ownerUuid(), 1, Integer::sum);
+            ownerNames.put(claim.ownerUuid(), claim.ownerName());
+            maxInactivePerOwner.merge(claim.ownerUuid(), claim.inactiveMillis(), Math::max);
+        }
+
+        Queue<ExpiredClaim> queue = new ArrayDeque<>(claimsToDelete);
+        int totalToClean = claimsToDelete.size();
+
+        final TaskScheduler.CancellableTask[] taskHolder = new TaskScheduler.CancellableTask[1];
+
+        taskHolder[0] = scheduler.runTimer(new Runnable() {
+            @Override
+            public void run() {
+                int processedInThisTick = 0;
+
+                while (!queue.isEmpty() && processedInThisTick < batchSize) {
+                    ExpiredClaim claim = queue.poll();
+                    processedInThisTick++;
+
+                    // 1. Record audit log asynchronously
+                    String reason = "Inactive for " + DurationParser.formatShort(Duration.ofMillis(claim.inactiveMillis()));
+                    auditService.recordDeletion(
+                            claim.ownerUuid(),
+                            claim.ownerName(),
+                            claim.psRegion(),
+                            reason,
+                            claim.inactiveMillis()
+                    );
+
+                    // 2. Physical claim deletion on server thread
+                    try {
+                        claim.psRegion().deleteRegion(true);
+                    } catch (Throwable t) {
+                        plugin.getLogger().warning("Error deleting region " + claim.psRegion().getId() + ": " + t.getMessage());
+                    }
+
+                    // 3. Update player claim counter & check for grouped player broadcast
+                    int remaining = remainingClaimsPerOwner.compute(claim.ownerUuid(), (k, v) -> (v == null || v <= 1) ? 0 : v - 1);
+                    if (remaining == 0) {
+                        // All claims of this player have now been deleted! Send grouped broadcast
+                        emitPlayerDeletionBroadcast(claim.ownerUuid(), claim.ownerName(), maxInactivePerOwner.get(claim.ownerUuid()));
+                        remainingClaimsPerOwner.remove(claim.ownerUuid());
+                    }
+                }
+
+                if (queue.isEmpty()) {
+                    // All queued deletions are finished!
+                    if (taskHolder[0] != null) {
+                        taskHolder[0].cancel();
+                    }
+
+                    long duration = System.currentTimeMillis() - startTime;
+                    CleanupExecutionResult result = CleanupExecutionResult.ofSuccess(
+                            CleanupAction.REMOVE,
+                            durationThreshold,
+                            worldsToProcess,
+                            processedWorlds,
+                            totalRegionsEvaluated,
+                            totalToClean,
+                            affectedRegionIds,
+                            duration
+                    );
+
+                    lastResult = result;
+                    if (feedbackSender != null) {
+                        messageService.send(feedbackSender, "cleanup.completed", Map.of(
+                                "time", String.valueOf(duration),
+                                "count", String.valueOf(totalToClean)
+                        ));
+                    }
+                    if (config.logToConsole()) {
+                        plugin.getLogger().info(String.format("Cleanup sweep completed: %d claims deleted across %d worlds in %dms.",
+                                totalToClean, processedWorlds, duration));
+                    }
+
+                    isExecuting.set(false);
+                    future.complete(result);
+                }
+            }
+        }, 1L, 1L);
+    }
+
+    /**
+     * Emits a single multiline broadcast to all players when a user's protections are eliminated.
+     */
+    private void emitPlayerDeletionBroadcast(UUID playerUuid, String playerName, Long inactiveMillis) {
+        CleanConfig config = configManager.getCleanConfig();
+        if (!config.broadcastEnabled() || config.broadcastLines().isEmpty()) {
+            return;
+        }
+
+        // Avoid broadcasting for internal orphaned regions
+        if ("Orphaned/Server".equalsIgnoreCase(playerName) || "Unknown".equalsIgnoreCase(playerName)) {
+            return;
+        }
+
+        String inactiveFormatted = DurationParser.formatShort(Duration.ofMillis(inactiveMillis != null ? inactiveMillis : 0));
+        MiniMessage mm = MiniMessage.miniMessage();
+
+        for (String rawLine : config.broadcastLines()) {
+            String populated = rawLine
+                    .replace("<player>", playerName)
+                    .replace("<time>", inactiveFormatted);
+            Bukkit.broadcast(mm.deserialize(populated));
+        }
     }
 
     private List<String> resolveTargetWorlds(List<String> explicitWorlds) {
