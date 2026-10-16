@@ -51,7 +51,7 @@ public class PSAutoCleanerPlugin extends JavaPlugin {
         this.taskScheduler = new PaperTaskScheduler(this);
         this.inactivityService = new InactivityService(configManager);
         this.cleanerService = new CleanerService(this, configManager, messageService, taskScheduler);
-        this.regionInspectorService = new RegionInspectorService(inactivityService);
+        this.regionInspectorService = new RegionInspectorService(configManager, inactivityService);
 
         // 5. Register commands and tab completion
         PluginCommand command = getCommand("psautocleaner");

@@ -46,8 +46,11 @@ It automatically monitors and cleans up protection regions belonging to inactive
 | `%psautocleaner_next_cleanup%` | Time remaining until the next automatic server sweep |
 | `%psautocleaner_current_region_id%` | ID of the claim region player is standing inside |
 | `%psautocleaner_current_region_owner%` | Owner of the claim region player is standing inside |
-| `%psautocleaner_current_region_days_left%` | Days left before the current claim expires |
+| `%psautocleaner_current_region_days_left%` | Days left before the current claim expires (checks most active affiliate) |
 | `%psautocleaner_current_region_time_left%` | Formatted time left before the current claim expires |
+| `%psautocleaner_current_region_most_active_player%` | Name of the most recently active owner or member |
+| `%psautocleaner_current_region_most_active_role%` | Role of the most active player (`owner` or `member`) |
+| `%psautocleaner_current_region_is_protected_by_member%` | Whether the claim is currently kept active by a member |
 
 ---
 
@@ -81,6 +84,10 @@ log-to-console: true
 
 # Format for countdown placeholders ("short" or "verbose")
 time-format: "short"
+
+# Whether to check region members (added via /ps add) in addition to owners
+# If true, a claim won't expire as long as at least ONE member or owner remains active
+check-members: true
 ```
 
 ---

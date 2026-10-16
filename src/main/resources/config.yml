@@ -36,3 +36,7 @@ log-to-console: true
 # Time format for countdown placeholders and messages
 # Options: "verbose" (e.g. 29d 14h 32m), "short" (e.g. 29d 14h)
 time-format: "short"
+
+# Whether to check region members (added via /ps add) in addition to owners
+# If true, a claim won't expire as long as at least ONE member or owner remains active
+check-members: true

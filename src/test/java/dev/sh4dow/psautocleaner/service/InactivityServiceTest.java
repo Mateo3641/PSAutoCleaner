@@ -33,7 +33,8 @@ class InactivityServiceTest {
                 10,
                 Collections.emptyList(),
                 true,
-                "short"
+                "short",
+                true
         );
         when(configManager.getCleanConfig()).thenReturn(config);
         inactivityService = new InactivityService(configManager);
@@ -138,7 +139,7 @@ class InactivityServiceTest {
         assertThat(inactivityService.formatDuration(duration)).isEqualTo("5d 3h");
 
         // Verbose format
-        CleanConfig verboseConfig = new CleanConfig(true, 30, CleanupAction.REMOVE, 24, 10, Collections.emptyList(), true, "verbose");
+        CleanConfig verboseConfig = new CleanConfig(true, 30, CleanupAction.REMOVE, 24, 10, Collections.emptyList(), true, "verbose", true);
         when(configManager.getCleanConfig()).thenReturn(verboseConfig);
         assertThat(inactivityService.formatDuration(duration)).isEqualTo("5d 3h 15m");
 

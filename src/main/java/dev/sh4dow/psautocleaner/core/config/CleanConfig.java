@@ -16,7 +16,8 @@ public record CleanConfig(
         long initialDelayMinutes,
         List<String> targetWorlds,
         boolean logToConsole,
-        String timeFormat
+        String timeFormat,
+        boolean checkMembers
 ) {
     public CleanConfig {
         if (inactiveDays < 1) {
@@ -38,6 +39,6 @@ public record CleanConfig(
     }
 
     public static CleanConfig defaultValues() {
-        return new CleanConfig(true, 30, CleanupAction.REMOVE, 24, 10, Collections.emptyList(), true, "short");
+        return new CleanConfig(true, 30, CleanupAction.REMOVE, 24, 10, Collections.emptyList(), true, "short", true);
     }
 }

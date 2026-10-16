@@ -116,6 +116,9 @@ public class PlaceholderApiHook extends PlaceholderExpansion {
                 case "status" -> summary.getProfile()
                         .map(inactivityService::getStatusDescriptor)
                         .orElse("N/A");
+                case "most_active_player" -> summary.mostActivePlayerName() != null ? summary.mostActivePlayerName() : "None";
+                case "most_active_role" -> summary.mostActiveRole() != null ? summary.mostActiveRole() : "owner";
+                case "is_protected_by_member" -> String.valueOf(summary.isProtectedByMember());
                 default -> null;
             };
         }

@@ -53,7 +53,8 @@ class CleanerServiceTest {
                 10,
                 Collections.emptyList(),
                 false,
-                "short"
+                "short",
+                true
         );
         when(configManager.getCleanConfig()).thenReturn(config);
 

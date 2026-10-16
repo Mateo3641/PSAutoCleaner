@@ -40,6 +40,8 @@ region:
   owner-active: "<green>Owner is currently active. Time remaining: <time_remaining></green>"
   owner-inactive: "<yellow>Owner inactive for <days_inactive>. Deletion in: <time_remaining></yellow>"
   owner-expired: "<red><bold>EXPIRED!</bold> This region will be cleaned up on the next sweep.</red>"
+  member-active: "<green>Protected by active member <gold><member></gold>. Time remaining: <time_remaining></green>"
+  member-inactive: "<yellow>Owner inactive. Protected by member <gold><member></gold> (inactive for <days_inactive>). Deletion in: <time_remaining></yellow>"
 
 cleanup:
   started: "<yellow>Starting ProtectionStones cleanup sweep across <white><count></white> worlds...</yellow>"

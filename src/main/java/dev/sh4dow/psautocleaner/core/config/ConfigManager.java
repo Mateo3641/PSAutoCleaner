@@ -44,6 +44,7 @@ public class ConfigManager {
         List<String> targetWorlds = config.getStringList("target-worlds");
         boolean logToConsole = config.getBoolean("log-to-console", true);
         String timeFormat = config.getString("time-format", "short");
+        boolean checkMembers = config.getBoolean("check-members", true);
 
         if (inactiveDays < 1) {
             plugin.getLogger().warning("Invalid inactive-days (" + inactiveDays + ") in config.yml. Defaulting to 30.");
@@ -62,7 +63,8 @@ public class ConfigManager {
                 initialDelayMinutes,
                 targetWorlds,
                 logToConsole,
-                timeFormat
+                timeFormat,
+                checkMembers
         );
 
         loadMessages();

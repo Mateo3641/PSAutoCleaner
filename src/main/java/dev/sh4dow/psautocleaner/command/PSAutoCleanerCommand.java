@@ -160,20 +160,34 @@ public class PSAutoCleanerCommand implements CommandExecutor {
 
         messageService.sendWithoutPrefix(player, "region.owner", Map.of("owner", summary.ownerName()));
 
-        InactivityProfile profile = summary.ownerProfile();
+        InactivityProfile profile = summary.getProfile().orElse(summary.ownerProfile());
         if (profile != null) {
+            String timeRemaining = inactivityService.formatDuration(profile.millisRemaining());
             if (profile.isExempt()) {
                 messageService.sendWithoutPrefix(player, "region.owner-exempt", Collections.emptyMap());
             } else if (profile.isExpired()) {
                 messageService.sendWithoutPrefix(player, "region.owner-expired", Collections.emptyMap());
+            } else if (summary.isProtectedByMember()) {
+                if (profile.isOnline()) {
+                    messageService.sendWithoutPrefix(player, "region.member-active", Map.of(
+                            "member", summary.mostActivePlayerName(),
+                            "time_remaining", timeRemaining
+                    ));
+                } else {
+                    messageService.sendWithoutPrefix(player, "region.member-inactive", Map.of(
+                            "member", summary.mostActivePlayerName(),
+                            "days_inactive", String.valueOf(profile.daysInactive()),
+                            "time_remaining", timeRemaining
+                    ));
+                }
             } else if (profile.isOnline()) {
                 messageService.sendWithoutPrefix(player, "region.owner-active", Map.of(
-                        "time_remaining", inactivityService.formatDuration(profile.millisRemaining())
+                        "time_remaining", timeRemaining
                 ));
             } else {
                 messageService.sendWithoutPrefix(player, "region.owner-inactive", Map.of(
                         "days_inactive", String.valueOf(profile.daysInactive()),
-                        "time_remaining", inactivityService.formatDuration(profile.millisRemaining())
+                        "time_remaining", timeRemaining
                 ));
             }
         }

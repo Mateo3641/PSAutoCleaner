@@ -32,7 +32,8 @@ class ConfigManagerTest {
                 -2, // invalid initialDelay
                 null,
                 true,
-                ""
+                "",
+                true
         );
 
         assertThat(config.inactiveDays()).isEqualTo(30);
@@ -41,6 +42,7 @@ class ConfigManagerTest {
         assertThat(config.initialDelayMinutes()).isEqualTo(10);
         assertThat(config.targetWorlds()).isEmpty();
         assertThat(config.timeFormat()).isEqualTo("short");
+        assertThat(config.checkMembers()).isTrue();
     }
 
     @Test
@@ -53,7 +55,8 @@ class ConfigManagerTest {
                 5,
                 List.of("world", "world_nether"),
                 false,
-                "verbose"
+                "verbose",
+                false
         );
 
         assertThat(config.enabled()).isTrue();
@@ -64,5 +67,6 @@ class ConfigManagerTest {
         assertThat(config.targetWorlds()).containsExactly("world", "world_nether");
         assertThat(config.logToConsole()).isFalse();
         assertThat(config.timeFormat()).isEqualTo("verbose");
+        assertThat(config.checkMembers()).isFalse();
     }
 }
