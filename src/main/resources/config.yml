@@ -22,8 +22,15 @@ interval-hours: 24
 # Delay before first execution after server start in minutes (avoids lag spikes on boot)
 initial-delay-minutes: 10
 
-# Target worlds where cleanup should run
-# Leave empty ([]) to target ALL loaded worlds on the server
+# Target worlds where cleanup should run.
+# Leave empty ([]) to automatically target ALL loaded worlds on the server:
+# target-worlds: []
+#
+# Or specify specific worlds using a YAML list:
+# target-worlds:
+#   - "world"
+#   - "world_nether"
+#   - "lobby"
 target-worlds: []
 
 # Send summary messages and cleanup logs to console
