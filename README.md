@@ -70,12 +70,9 @@ interval-hours: 24
 initial-delay-minutes: 10
 
 # Target worlds (empty list = all loaded worlds)
-# Example targeting specific worlds:
-# target-worlds:
-#   - "world"
-#   - "world_nether"
-#   - "lobby"
 target-worlds: []
+# - "world"
+# - "lobby"
 
 # Log cleanup summary to console
 log-to-console: true
